@@ -1,29 +1,15 @@
 #!/bin/bash
 #
 # Rank DNS servers by latency from current location
+#
 
 set -euo pipefail
 
 get_current_dns() {
   local current_dns
+  current_dns=$(resolvectl dns wlan0 | awk '{print $4}')
 
-  if command -v nmcli >/dev/null; then
-    current_dns=$(nmcli dev show | awk '/DNS/ {print $2; exit}')
-  elif [[ -f /etc/resolv.conf ]]; then
-    current_dns=$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf)
-  elif command -v resolvectl >/dev/null; then
-    current_dns=$(
-      resolvectl status | awk -F': ' '/DNS Servers/ {print $2; exit}' \
-        | awk '{print $1}'
-    )
-  fi
-
-  if [[ -n $current_dns ]]; then
-    echo "$current_dns"
-  else
-    echo "ERROR: Can't find current DNS"
-    exit 1
-  fi
+  echo "$current_dns"
 }
 
 fetch_public_dns() {
@@ -66,7 +52,7 @@ display_results() {
   local current_dns="$1"
   local test_results="$2"
 
-  local n_row="20"
+  local n_row="11"
 
   printf "+----+------------------------+-----------+\n"
   printf "| NO | DNS SERVER             | PING      |\n"
@@ -74,8 +60,8 @@ display_results() {
 
   sort -nk2 <<<"$test_results" | head -n "$n_row" \
     | awk -v current="$current_dns" '{
-        printf "| %2d | %-22s | %6.2f ms |\n", NR,
-        ($1 == current) ? $1 " (CUR.)" : $1, $2
+        printf "| %2d | %-22s | %6.2f ms |\n", NR - 1,
+        ($1 == current) ? $1 " (CURR)" : $1, $2
       }'
 
   printf "+----+------------------------+-----------+\n"
